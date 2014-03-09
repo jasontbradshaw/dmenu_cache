@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+# give dmenu its values, run it, then update the cache with the selected value
+./dmenu_cache show | dmenu $@ | ./dmenu_cache update

@@ -1,0 +1,163 @@
+#!/usr/bin/env python
+
+from __future__ import print_function
+from __future__ import unicode_literals
+
+import collections
+import json
+import os
+import sys
+
+PROG_NAME = 'dmenu_cache'
+CACHE_NAME = "cache.json"
+DATA_BASE = os.getenv('XDG_DATA_HOME') or os.path.expanduser('~/.local/share')
+CACHE_PATH = os.path.join(DATA_BASE, PROG_NAME, CACHE_NAME)
+
+# how much using a term increases its frequency count
+USE_FACTOR = 5
+
+# how much to reduce every count after each use
+AGE_FACTOR = 1
+
+class Cache(object):
+  '''A disk-backed frequency cache.'''
+
+  def __init__(self, path, use_factor=5, age_factor=1):
+    self.path = path
+    self.use_factor = use_factor
+    self.age_factor = age_factor
+
+  def __ensure_loaded(self):
+    '''Ensure that the cache is currently in-memory.'''
+
+    if self.__cache is None:
+      raise IOError("cache is not accessible outside the 'with' context")
+
+  def use(self, term, use_factor_override=None):
+    '''Mark a term as used, increasing its frequency count.'''
+
+    self.__ensure_loaded()
+    use_factor = use_factor_override or self.use_factor
+    self.__cache[term] += use_factor
+
+  def age(self):
+    '''Age all entries in the cache.'''
+    self.__ensure_loaded()
+
+    for term in self:
+      self.__cache[term] -= self.age_factor
+
+      # remove the term if it has aged-out
+      if self.__cache[term] <= 0:
+        del self.__cache[term]
+
+  def clear(self):
+    '''Empty the cache of all terms.'''
+    self.__ensure_loaded()
+    self.__cache = collections.Counter()
+
+  def __iter__(self):
+    self.__ensure_loaded()
+    for term, count in self.__cache.most_common():
+      yield term
+
+  def __str__(self):
+    self.__ensure_loaded()
+    return json.dumps(self.__cache, indent=2)
+
+  def __load_cache(self, path):
+    '''Load the cache from disk into memory.'''
+
+    # set the default cache value
+    self.__cache = collections.Counter()
+
+    try:
+      with open(path, 'r') as f:
+        self.__cache = collections.Counter(json.load(f))
+    except IOError:
+      # make sure we have a cache directory
+      try:
+        os.makedirs(os.path.dirname(path))
+      except OSError:
+        # if we get an error, the cache directory already existed, so we don't
+        # need to do anything else. the file will be created if anyone uses the
+        # cache.
+        pass
+
+  def __enter__(self):
+    self.__load_cache(self.path)
+    return self
+
+  def __exit__(self, exception_type, exception_value, traceback):
+    # reset our internal cache variable
+    cache = self.__cache
+    self.__cache = None
+
+    # write our cache file to disk now that we're done modifying it
+    with open(CACHE_PATH, 'w') as f:
+      json.dump(cache, f, indent=2)
+
+def show(cache):
+  '''Show, then age, all values in the cache. Seeds the cache from the PATH.'''
+
+  # seed the cache with values from the PATH
+  paths = os.getenv('PATH').strip().split(':')
+
+  # collect all the individual terms
+  terms = set()
+  for path in paths:
+    for term in os.listdir(path):
+      terms.add(term)
+
+  # add all the terms to the cache uniquely. this is important so that they'll
+  # properly age-out before they're written to disk.
+  for term in terms:
+    cache.use(term, use_factor_override=cache.age_factor)
+
+  # emit all the terms in most-used order, each on its own line
+  for term in cache:
+    print(term)
+
+  # age the cache once we're done with it. this will remove all the seeded terms
+  cache.age()
+
+def update(cache):
+  '''Update the cache using all terms from stdin.'''
+
+  for line in sys.stdin:
+    term = line.strip()
+
+    if len(term) > 0:
+      cache.use(term)
+
+def reset(cache):
+  '''Remove all terms from the cache.'''
+  cache.clear()
+
+def stringify(cache):
+  '''Print all the raw values in the cache.'''
+  print(cache)
+
+def main(command):
+  with Cache(CACHE_PATH, use_factor=USE_FACTOR, age_factor=AGE_FACTOR) as cache:
+    if command == 'update':
+      update(cache)
+    elif command == 'show':
+      show(cache)
+    elif command == 'reset':
+      reset(cache)
+    elif command == 'print':
+      stringify(cache)
+    else:
+      print('unrecognized command:', command)
+      sys.exit(1)
+
+if __name__ == '__main__':
+  # make sure we were given a command
+  if len(sys.argv) < 2:
+    print('command required')
+    sys.exit(1)
+
+  # pass the normalized command to the main method
+  command = sys.argv[1].strip().lower()
+  main(command)
