@@ -58,7 +58,12 @@ class Cache(object):
 
   def __iter__(self):
     self.__ensure_loaded()
-    for term, count in self.__cache.most_common():
+
+    # invert terms so their count is first
+    terms = [(count, term) for term, count in self.__cache.most_common()]
+
+    # yield the terms sorted by frequency, then reverse-alpha name
+    for count, term in sorted(terms, reverse=True):
       yield term
 
   def __str__(self):
