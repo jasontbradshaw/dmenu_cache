@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 
 import collections
 import json
+import operator
 import os
 import sys
 
@@ -21,6 +22,10 @@ AGE_FACTOR = 1
 
 class Cache(object):
   '''A disk-backed frequency cache.'''
+
+  # used when sorting the term list
+  GETTER_FIRST = operator.itemgetter(0)
+  GETTER_SECOND = operator.itemgetter(1)
 
   def __init__(self, path, use_factor=5, age_factor=1):
     self.path = path
@@ -59,11 +64,16 @@ class Cache(object):
   def __iter__(self):
     self.__ensure_loaded()
 
-    # invert terms so their count is first
-    terms = [(count, term) for term, count in self.__cache.most_common()]
+    # pairs of (term, count)
+    terms = [item for item in self.__cache.items()]
 
-    # yield the terms sorted by frequency, then reverse-alpha name
-    for count, term in sorted(terms, reverse=True):
+    # sort terms first alphabetically, then by reverse count. this preserves
+    # alphabetical order, except when counts are larger.
+    terms.sort(key=Cache.GETTER_FIRST)
+    terms.sort(key=Cache.GETTER_SECOND, reverse=True)
+
+    # yield the terms in sorted order
+    for term, count in terms:
       yield term
 
   def __str__(self):
