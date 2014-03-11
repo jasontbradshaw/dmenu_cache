@@ -145,6 +145,9 @@ def update(cache):
     if len(term) > 0:
       cache.use(term)
 
+    # output the line exactly as we received it (with newline re-added)
+    print(line)
+
 def reset(cache):
   '''Remove all terms from the cache.'''
   cache.clear()
