@@ -20,6 +20,19 @@ USE_FACTOR = 5
 # how much to reduce every count after each use
 AGE_FACTOR = 1
 
+def ensure_cache_loaded(fn):
+  '''Decorator that ensures the cache is currently loaded in memory.'''
+
+  def wrapper(self=None, *args, **kwargs):
+    # make sure the cache is loaded before running the method
+    if self._Cache__cache is None:
+      raise IOError("The cache is not accessible outside a 'with' context!")
+
+    # call the method once we're sure the cache exists
+    return fn(self, *args, **kwargs)
+
+  return wrapper
+
 class Cache(object):
   '''A disk-backed frequency cache.'''
 
@@ -32,22 +45,19 @@ class Cache(object):
     self.use_factor = use_factor
     self.age_factor = age_factor
 
-  def __ensure_loaded(self):
-    '''Ensure that the cache is currently in-memory.'''
-
-    if self.__cache is None:
-      raise IOError("cache is not accessible outside the 'with' context")
-
+  @ensure_cache_loaded
   def use(self, term, use_factor_override=None):
     '''Mark a term as used, increasing its frequency count.'''
+    # default to the given value, otherwise use the internal value
+    use_factor = use_factor_override
+    if use_factor_override is None:
+      use_factor = self.use_factor
 
-    self.__ensure_loaded()
-    use_factor = use_factor_override or self.use_factor
     self.__cache[term] += use_factor
 
+  @ensure_cache_loaded
   def age(self):
     '''Age all entries in the cache.'''
-    self.__ensure_loaded()
 
     for term in self:
       self.__cache[term] -= self.age_factor
@@ -56,14 +66,13 @@ class Cache(object):
       if self.__cache[term] <= 0:
         del self.__cache[term]
 
+  @ensure_cache_loaded
   def clear(self):
     '''Empty the cache of all terms.'''
-    self.__ensure_loaded()
     self.__cache = collections.Counter()
 
+  @ensure_cache_loaded
   def __iter__(self):
-    self.__ensure_loaded()
-
     # pairs of (term, count)
     terms = [item for item in self.__cache.items()]
 
@@ -76,8 +85,8 @@ class Cache(object):
     for term, count in terms:
       yield term
 
+  @ensure_cache_loaded
   def __str__(self):
-    self.__ensure_loaded()
     return json.dumps(self.__cache, indent=2)
 
   def __load_cache(self, path):
@@ -124,16 +133,17 @@ def show(cache):
     for term in os.listdir(path):
       terms.add(term)
 
-  # add all the terms to the cache uniquely. this is important so that they'll
-  # properly age-out before they're written to disk.
+  # add all the terms to the cache uniquely and with 0 uses. this makes them
+  # show up in the output, but they'll be aged-out before the cache hits disk
+  # since they have no usages.
   for term in terms:
-    cache.use(term, use_factor_override=cache.age_factor)
+    cache.use(term, use_factor_override=0)
 
   # emit all the terms in most-used order, each on its own line
   for term in cache:
     print(term)
 
-  # age the cache once we're done with it. this will remove all the seeded terms
+  # age the cache once we're done with it to remove all the seeded terms
   cache.age()
 
 def update(cache):
