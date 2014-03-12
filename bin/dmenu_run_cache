@@ -1,8 +1,27 @@
 #!/usr/bin/env sh
 
-# get the execution directory of this script
-PROG="$(dirname $0)/../dmenu_cache"
+# if dmenu isn't installed, complain and exit
+if [ -z "$(which dmenu 2> /dev/null)" ]; then
+  echo "dmenu must be in the path for this script to function!"
+  exit 1
+fi
+
+# courtesy http://stackoverflow.com/a/246128
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ]; do
+  # resolve $SOURCE until the file is no longer a symlink
+  DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+
+  # if $SOURCE was a relative symlink, we need to resolve it relative to the
+  # path where the symlink file was located.
+  [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+
+# get the path to the script
+PROG="${DIR}/../dmenu_cache"
 
 # give dmenu its values, run dmenu, update the cache with the selected value,
 # then run the given command(s).
-$PROG show | dmenu $@ | $PROG update | xargs -I {} sh -c \'{}\'
+$PROG show | dmenu $@ | $PROG update | xargs -I {} sh -c '{}'
