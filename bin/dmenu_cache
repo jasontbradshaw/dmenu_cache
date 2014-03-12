@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+
+# get the execution directory of this script
+PROG="$(dirname $0)/../dmenu_cache"
+
+# run the cache program as-is, passing arguments straight through
+$PROG $@

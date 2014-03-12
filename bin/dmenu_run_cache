@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+
+# get the execution directory of this script
+PROG="$(dirname $0)/../dmenu_cache"
+
+# give dmenu its values, run dmenu, update the cache with the selected value,
+# then run the given command(s).
+$PROG show | dmenu $@ | $PROG update | xargs -I {} sh -c \'{}\'

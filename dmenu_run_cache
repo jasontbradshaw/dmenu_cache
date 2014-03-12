@@ -1,6 +1,0 @@
-#!/usr/bin/env sh
-
-# give dmenu its values, run dmenu, update the cache with the selected value,
-# then run the given command(s).
-./dmenu_cache show | dmenu $@ | ./dmenu_cache update | \
-  xargs -I {} sh -c \'{}\'
