@@ -130,8 +130,12 @@ def show(cache):
   # collect all the individual terms
   terms = set()
   for path in paths:
-    for term in os.listdir(path):
-      terms.add(term)
+    # if we fail to list the directory, skip it
+    try:
+      for term in os.listdir(path):
+        terms.add(term)
+    except OSError:
+      pass
 
   # add all the terms to the cache uniquely and with 0 uses. this makes them
   # show up in the output, but they'll be aged-out before the cache hits disk
