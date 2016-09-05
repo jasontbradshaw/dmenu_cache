@@ -86,6 +86,10 @@ class Cache(object):
     self.__cache = collections.Counter()
 
   @ensure_cache_loaded
+  def items(self):
+    return self.__cache.items()
+
+  @ensure_cache_loaded
   def __iter__(self):
     # Pairs of (term, count).
     terms = [item for item in self.__cache.items()]
@@ -190,7 +194,12 @@ def reset(cache):
 
 def stringify(cache):
   '''Print all the raw values in the cache.'''
-  print(cache)
+  pairs = [p for p in cache.items()]
+  pairs.sort(key=Cache.GETTER_FIRST)
+  pairs.sort(key=Cache.GETTER_SECOND, reverse=True)
+
+  for term, count in pairs:
+    print("{}: {}".format(term, count))
 
 def main(command):
   with Cache(CACHE_PATH, use_factor=USE_FACTOR, age_factor=AGE_FACTOR) as cache:
