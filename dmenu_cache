@@ -142,20 +142,28 @@ def show(cache):
   paths = os.getenv('PATH').strip().split(':')
 
   # collect all the individual terms
-  terms = set()
+  path_terms = set()
   for path in paths:
     # if we fail to list the directory, skip it
     try:
       for term in os.listdir(path):
-        terms.add(term)
+        path_terms.add(term)
     except OSError:
       pass
 
   # add all the terms to the cache uniquely and with 0 uses. this makes them
   # show up in the output, but they'll be aged-out before the cache hits disk
-  # since they have no usages.
-  for term in terms:
+  # since they have no usages. they'll also take less precendence than the terms
+  # that have actualy uses, but will still be available for use.
+  for term in path_terms:
     cache.use(term, use_factor_override=0)
+
+  # remove any terms from the cache that _weren't_ in the path. this way, we
+  # won't show old programs that have since been uninstalled.
+  uninstalled_terms = []
+  for term in cache:
+    if term not in path_terms:
+      del cache[term]
 
   # emit all the terms in most-used order, each on its own line
   for term in cache:
