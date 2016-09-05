@@ -14,21 +14,21 @@ CACHE_NAME = "cache.json"
 DATA_BASE = os.getenv('XDG_DATA_HOME') or os.path.expanduser('~/.local/share')
 CACHE_PATH = os.path.join(DATA_BASE, PROG_NAME, CACHE_NAME)
 
-# how much using a term increases its frequency count
+# How much using a term increases its frequency count.
 USE_FACTOR = 5
 
-# how much to reduce every count after each use
+# How much to reduce every count after each use.
 AGE_FACTOR = 1
 
 def ensure_cache_loaded(fn):
   '''Decorator that ensures the cache is currently loaded in memory.'''
 
   def wrapper(self=None, *args, **kwargs):
-    # make sure the cache is loaded before running the method
+    # Make sure the cache is loaded before running the method.
     if self._Cache__cache is None:
       raise IOError("The cache is not accessible outside a 'with' context!")
 
-    # call the method once we're sure the cache exists
+    # Call the method once we're sure the cache exists.
     return fn(self, *args, **kwargs)
 
   return wrapper
@@ -36,7 +36,7 @@ def ensure_cache_loaded(fn):
 class Cache(object):
   '''A disk-backed frequency cache.'''
 
-  # used when sorting the term list
+  # Used when sorting the term list.
   GETTER_FIRST = operator.itemgetter(0)
   GETTER_SECOND = operator.itemgetter(1)
 
@@ -48,7 +48,7 @@ class Cache(object):
   @ensure_cache_loaded
   def use(self, term, use_factor_override=None):
     '''Mark a term as used, increasing its frequency count.'''
-    # default to the given value, otherwise use the internal value
+    # Default to the given value, otherwise use the internal value.
     use_factor = use_factor_override
     if use_factor_override is None:
       use_factor = self.use_factor
@@ -72,11 +72,11 @@ class Cache(object):
     for term in self:
       self.__cache[term] -= self.age_factor
 
-      # mark the term if it has aged-out
+      # Mark the term if it has aged-out.
       if self.__cache[term] <= 0:
         terms_to_remove.append(term)
 
-    # remove all aged-out terms
+    # Remove all aged-out terms.
     for term in terms_to_remove:
       del self.__cache[term]
 
@@ -87,15 +87,15 @@ class Cache(object):
 
   @ensure_cache_loaded
   def __iter__(self):
-    # pairs of (term, count)
+    # Pairs of (term, count).
     terms = [item for item in self.__cache.items()]
 
-    # sort terms first alphabetically, then by reverse count. this preserves
+    # Sort terms first alphabetically, then by reverse count. This preserves
     # alphabetical order, except when counts are larger.
     terms.sort(key=Cache.GETTER_FIRST)
     terms.sort(key=Cache.GETTER_SECOND, reverse=True)
 
-    # yield the terms in sorted order
+    # Yield the terms in sorted order.
     for term, count in terms:
       yield term
 
@@ -106,19 +106,19 @@ class Cache(object):
   def __load_cache(self, path):
     '''Load the cache from disk into memory.'''
 
-    # set the default cache value
+    # Set the default cache value.
     self.__cache = collections.Counter()
 
     try:
       with open(path, 'r') as f:
         self.__cache = collections.Counter(json.load(f))
     except IOError:
-      # make sure we have a cache directory
+      # Make sure we have a cache directory.
       try:
         os.makedirs(os.path.dirname(path))
       except OSError:
-        # if we get an error, the cache directory already existed, so we don't
-        # need to do anything else. the file will be created if anyone uses the
+        # If we get an error, the cache directory already existed, so we don't
+        # need to do anything else. The file will be created if anyone uses the
         # cache.
         pass
 
@@ -127,49 +127,49 @@ class Cache(object):
     return self
 
   def __exit__(self, exception_type, exception_value, traceback):
-    # reset our internal cache variable
+    # Reset our internal cache variable.
     cache = self.__cache
     self.__cache = None
 
-    # write our cache file to disk now that we're done modifying it
+    # Write our cache file to disk now that we're done modifying it.
     with open(CACHE_PATH, 'w') as f:
       json.dump(cache, f, indent=2)
 
 def show(cache):
   '''Show, then age, all values in the cache. Seeds the cache from the PATH.'''
 
-  # seed the cache with values from the PATH
+  # Seed the cache with executables from the `PATH`.
   paths = os.getenv('PATH').strip().split(':')
 
-  # collect all the individual terms
+  # Collect all the individual terms.
   path_terms = set()
   for path in paths:
-    # if we fail to list the directory, skip it
+    # If we fail to list the directory, skip it.
     try:
       for term in os.listdir(path):
         path_terms.add(term)
     except OSError:
       pass
 
-  # add all the terms to the cache uniquely and with 0 uses. this makes them
+  # Add all the terms to the cache uniquely and with 0 uses. This makes them
   # show up in the output, but they'll be aged-out before the cache hits disk
-  # since they have no usages. they'll also take less precendence than the terms
-  # that have actualy uses, but will still be available for use.
+  # since they have no usages. They'll also have less precendence than the terms
+  # that have actual uses, but will still be available for use.
   for term in path_terms:
     cache.use(term, use_factor_override=0)
 
-  # remove any terms from the cache that _weren't_ in the path. this way, we
+  # Remove any terms from the cache that _weren't_ in the path. This way, we
   # won't show old programs that have since been uninstalled.
   uninstalled_terms = []
   for term in cache:
     if term not in path_terms:
       del cache[term]
 
-  # emit all the terms in most-used order, each on its own line
+  # Emit all the terms in most-used order, each on its own line.
   for term in cache:
     print(term)
 
-  # age the cache once we're done with it to remove all the seeded terms
+  # Age the cache once we're done with it to remove all the seeded terms.
   cache.age()
 
 def update(cache):
@@ -181,7 +181,7 @@ def update(cache):
     if len(term) > 0:
       cache.use(term)
 
-    # output the line exactly as we received it (with newline re-added)
+    # Output the line exactly as we received it (with newline re-added).
     print(line)
 
 def reset(cache):
@@ -203,15 +203,15 @@ def main(command):
     elif command == 'print':
       stringify(cache)
     else:
-      print('unrecognized command:', command)
+      print('Unrecognized command:', command)
       sys.exit(1)
 
 if __name__ == '__main__':
-  # make sure we were given a command
+  # Make sure we were given a command.
   if len(sys.argv) < 2:
-    print('command required')
+    print('A command is required.')
     sys.exit(1)
 
-  # pass the normalized command to the main method
+  # Pass the normalized command to the main method.
   command = sys.argv[1].strip().lower()
   main(command)
