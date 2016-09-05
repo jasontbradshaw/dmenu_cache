@@ -68,12 +68,17 @@ class Cache(object):
   def age(self):
     '''Age all entries in the cache.'''
 
+    terms_to_remove = []
     for term in self:
       self.__cache[term] -= self.age_factor
 
-      # remove the term if it has aged-out
+      # mark the term if it has aged-out
       if self.__cache[term] <= 0:
-        del self.__cache[term]
+        terms_to_remove.append(term)
+
+    # remove all aged-out terms
+    for term in terms_to_remove:
+      del self.__cache[term]
 
   @ensure_cache_loaded
   def clear(self):
