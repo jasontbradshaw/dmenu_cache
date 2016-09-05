@@ -56,6 +56,15 @@ class Cache(object):
     self.__cache[term] += use_factor
 
   @ensure_cache_loaded
+  def __delattr__(self, term):
+    '''
+    Remove a term from the cache entirely. Throws a `KeyError` if the term
+    doesn't exist in the cache.
+    '''
+
+    del self.__cache[term]
+
+  @ensure_cache_loaded
   def age(self):
     '''Age all entries in the cache.'''
 
