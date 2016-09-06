@@ -56,7 +56,7 @@ class Cache(object):
     self.__cache[term] += use_factor
 
   @ensure_cache_loaded
-  def __delattr__(self, term):
+  def remove(self, term):
     '''
     Remove a term from the cache entirely. Throws a `KeyError` if the term
     doesn't exist in the cache.
@@ -167,7 +167,7 @@ def show(cache):
   uninstalled_terms = []
   for term in cache:
     if term not in path_terms:
-      del cache[term]
+      cache.remove(term)
 
   # Emit all the terms in most-used order, each on its own line.
   for term in cache:
